@@ -34,6 +34,7 @@ function useAsync(initialState) {
     error: null,
     ...initialState
   })
+  const [cancelled, setCancelled] = React.useState(false);
 
   const run = React.useCallback((promise) => {
     if (!promise) {
@@ -43,20 +44,24 @@ function useAsync(initialState) {
     dispatch({type: 'pending'})
     promise.then(
       data => {
-        dispatch({type: 'resolved', data})
+        if (!cancelled) {
+          dispatch({type: 'resolved', data})
+        }
       },
       error => {
-        dispatch({type: 'rejected', error})
+        if (!cancelled) {
+          dispatch({type: 'rejected', error})
+        }
       },
     )
-  }, []);
+  }, [cancelled]);
 
-  return {run, ...state}
+  return {...state, run, cancel: () => setCancelled(true)}
 }
 
 function PokemonInfo({pokemonName}) {
 
-  const {data: pokemon, status, error, run} = useAsync({
+  const {data: pokemon, status, error, run, cancel} = useAsync({
     status: pokemonName ? 'pending' : 'idle',
   })
 
@@ -66,6 +71,8 @@ function PokemonInfo({pokemonName}) {
     }
     const promise = fetchPokemon(pokemonName);
     run(promise)
+
+    return () => cancel()
   }, [run, pokemonName])
 
   switch (status) {
